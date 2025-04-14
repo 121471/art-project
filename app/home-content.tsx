@@ -2,12 +2,33 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ArtFeed from "@/components/art-feed"
-import { Search, Plus, User, Home } from "lucide-react"
+import { Search, Plus, User, Home, Loader2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
 export default function HomeContent() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    }
+  }, [status, router])
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!session) {
+    return null
+  }
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen flex flex-col">
@@ -52,41 +73,29 @@ export default function HomeContent() {
         </TabsContent>
 
         <TabsContent value="profile" className="flex-1 overflow-auto pb-16">
-          {session ? (
-            <div className="flex flex-col items-center p-4">
-              <div className="w-24 h-24 rounded-full overflow-hidden mb-2">
-                <img
-                  src={session.user?.image || "/placeholder.svg"}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <h2 className="text-xl font-bold">{session.user?.name}</h2>
-              <p className="text-center text-gray-700 mb-4">{session.user?.email}</p>
+          <div className="flex flex-col items-center p-4">
+            <div className="w-24 h-24 rounded-full overflow-hidden mb-2">
+              <img
+                src={session.user?.image || "/placeholder.svg"}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h2 className="text-xl font-bold">{session.user?.name}</h2>
+            <p className="text-center text-gray-700 mb-4">{session.user?.email}</p>
 
-              <div className="grid grid-cols-3 gap-2 w-full mb-4">
-                {[1, 2, 3, 4, 5, 6].map((item) => (
-                  <div key={item} className="aspect-square rounded-md overflow-hidden">
-                    <img
-                      src={`/placeholder.svg?height=120&width=120&text=Art${item}`}
-                      alt={`Artwork ${item}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-3 gap-2 w-full mb-4">
+              {[1, 2, 3, 4, 5, 6].map((item) => (
+                <div key={item} className="aspect-square rounded-md overflow-hidden">
+                  <img
+                    src={`/placeholder.svg?height=120&width=120&text=Art${item}`}
+                    alt={`Artwork ${item}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="flex flex-col items-center p-4">
-              <p className="text-center text-gray-700 mb-4">Please sign in to view your profile</p>
-              <Link
-                href="/login"
-                className="bg-blue-500 text-white rounded-lg p-2 px-4"
-              >
-                Sign in
-              </Link>
-            </div>
-          )}
+          </div>
         </TabsContent>
 
         <TabsList className="fixed bottom-0 left-0 right-0 h-16 border-t bg-white grid grid-cols-4 gap-0">
