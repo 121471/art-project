@@ -7,18 +7,23 @@ import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { Session } from "next-auth"
 
-export default function HomeContent() {
+interface HomeContentProps {
+  initialSession?: Session
+}
+
+export default function HomeContent({ initialSession }: HomeContentProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (status === 'unauthenticated' && !initialSession) {
       router.push('/login')
     }
-  }, [status, router])
+  }, [status, router, initialSession])
 
-  if (status === 'loading') {
+  if (status === 'loading' && !initialSession) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -26,7 +31,9 @@ export default function HomeContent() {
     )
   }
 
-  if (!session) {
+  const currentSession = session || initialSession
+
+  if (!currentSession) {
     return null
   }
 
@@ -76,13 +83,13 @@ export default function HomeContent() {
           <div className="flex flex-col items-center p-4">
             <div className="w-24 h-24 rounded-full overflow-hidden mb-2">
               <img
-                src={session.user?.image || "/placeholder.svg"}
+                src={currentSession.user?.image || "/placeholder.svg"}
                 alt="Profile"
                 className="w-full h-full object-cover"
               />
             </div>
-            <h2 className="text-xl font-bold">{session.user?.name}</h2>
-            <p className="text-center text-gray-700 mb-4">{session.user?.email}</p>
+            <h2 className="text-xl font-bold">{currentSession.user?.name}</h2>
+            <p className="text-center text-gray-700 mb-4">{currentSession.user?.email}</p>
 
             <div className="grid grid-cols-3 gap-2 w-full mb-4">
               {[1, 2, 3, 4, 5, 6].map((item) => (
