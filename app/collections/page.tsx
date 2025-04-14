@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface Collection {
   id: string;
@@ -23,7 +24,7 @@ interface Collection {
 }
 
 export default function CollectionsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,15 +34,22 @@ export default function CollectionsPage() {
   });
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (session?.user) {
-      fetchCollections();
+    if (status === 'loading') return;
+    
+    if (!session?.user) {
+      router.push('/login');
+      return;
     }
-  }, [session]);
+
+    fetchCollections();
+  }, [session, status, router]);
 
   const fetchCollections = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('/api/collections');
       if (response.ok) {
         const data = await response.json();
@@ -49,7 +57,9 @@ export default function CollectionsPage() {
       }
     } catch (error) {
       console.error('Error fetching collections:', error);
-      toast.error('Failed to load collections');
+      toast.error('Failed to fetch collections');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -124,15 +134,16 @@ export default function CollectionsPage() {
     }
   };
 
-  if (!session) {
+  if (status === 'loading' || isLoading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Collections</h1>
-          <p>Please sign in to manage your collections.</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
+  }
+
+  if (!session?.user) {
+    return null;
   }
 
   return (
