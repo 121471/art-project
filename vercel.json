@@ -1,6 +1,7 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "buildCommand": "pnpm install && pnpm run build",
-  "installCommand": "pnpm install"
+  "buildCommand": "npm install --legacy-peer-deps && npm run build",
+  "installCommand": "npm install --legacy-peer-deps",
+  "nodeVersion": "18.x"
 } 
