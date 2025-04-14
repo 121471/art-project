@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 import { sendNewArtworkEmail } from '@/lib/email'
 
 export async function checkSimilarArtworks() {
