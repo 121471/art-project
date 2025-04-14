@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import CollectionsContent from './collections-content';
+import CollectionsWrapper from './collections-wrapper';
 
 export default async function CollectionsPage() {
   const session = await getServerSession(authOptions);
@@ -10,5 +10,5 @@ export default async function CollectionsPage() {
     redirect('/login');
   }
 
-  return <CollectionsContent />;
+  return <CollectionsWrapper initialSession={session} />;
 } 

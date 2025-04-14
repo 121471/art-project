@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { Session } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit2, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,11 @@ interface Collection {
   }[];
 }
 
-export default function CollectionsContent() {
-  const { data: session, status } = useSession();
+interface CollectionsContentProps {
+  initialSession: Session;
+}
+
+export default function CollectionsContent({ initialSession }: CollectionsContentProps) {
   const router = useRouter();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -36,27 +39,26 @@ export default function CollectionsContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (status === 'loading') return;
-    
-    if (!session?.user) {
+    if (!initialSession?.user) {
       router.push('/login');
       return;
     }
 
     fetchCollections();
-  }, [session, status, router]);
+  }, [initialSession, router]);
 
   const fetchCollections = async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/collections');
-      if (response.ok) {
-        const data = await response.json();
-        setCollections(data);
+      if (!response.ok) {
+        throw new Error('Failed to fetch collections');
       }
+      const data = await response.json();
+      setCollections(data);
     } catch (error) {
       console.error('Error fetching collections:', error);
-      toast.error('Failed to fetch collections');
+      toast.error('Failed to load collections');
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +135,7 @@ export default function CollectionsContent() {
     }
   };
 
-  if (status === 'loading' || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -141,7 +143,7 @@ export default function CollectionsContent() {
     );
   }
 
-  if (!session?.user) {
+  if (!initialSession?.user) {
     return null;
   }
 
