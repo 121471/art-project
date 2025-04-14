@@ -21,11 +21,13 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    domains: ['res.cloudinary.com'],
   },
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    serverActions: true,
   },
 }
 
