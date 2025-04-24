@@ -4,6 +4,9 @@ import { redirect } from "next/navigation"
 import ArtistContent from './artist-content'
 import prisma from "@/lib/prisma"
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function ArtistPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   
@@ -19,7 +22,9 @@ export default async function ArtistPage({ params }: { params: { id: string } })
           category: true,
           artist: true
         }
-      }
+      },
+      followers: true,
+      following: true
     }
   })
 

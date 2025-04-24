@@ -1,40 +1,69 @@
 'use client';
 
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Session } from 'next-auth'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ArtFeed from "@/components/art-feed"
-import { Search, Plus, User, Home, Loader2 } from "lucide-react"
-import { useSession } from "next-auth/react"
+import { Search, Plus, User, Home } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { Session } from "next-auth"
+
+interface Artwork {
+  id: string
+  title: string
+  description: string
+  imageUrl: string
+  price: number
+  categoryId: string
+  userId: string
+  createdAt: string
+  updatedAt: string
+}
 
 interface HomeContentProps {
-  initialSession?: Session
+  initialSession: Session;
 }
 
 export default function HomeContent({ initialSession }: HomeContentProps) {
-  const { data: session, status } = useSession()
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [artworks, setArtworks] = useState<Artwork[]>([])
 
   useEffect(() => {
-    if (status === 'unauthenticated' && !initialSession) {
+    if (!initialSession) {
       router.push('/login')
+      return
     }
-  }, [status, router, initialSession])
 
-  if (status === 'loading' && !initialSession) {
+    async function fetchArtworks() {
+      try {
+        const response = await fetch('/api/artworks')
+        if (!response.ok) {
+          throw new Error('Failed to fetch artworks')
+        }
+        const data = await response.json()
+        setArtworks(data)
+      } catch (error) {
+        console.error('Error fetching artworks:', error)
+        toast.error('Failed to load artworks')
+      }
+    }
+
+    fetchArtworks()
+  }, [initialSession, router])
+
+  if (!initialSession) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
-  }
-
-  const currentSession = session || initialSession
-
-  if (!currentSession) {
-    return null
   }
 
   return (
@@ -83,13 +112,13 @@ export default function HomeContent({ initialSession }: HomeContentProps) {
           <div className="flex flex-col items-center p-4">
             <div className="w-24 h-24 rounded-full overflow-hidden mb-2">
               <img
-                src={currentSession.user?.image || "/placeholder.svg"}
+                src={initialSession.user?.image || "/placeholder.svg"}
                 alt="Profile"
                 className="w-full h-full object-cover"
               />
             </div>
-            <h2 className="text-xl font-bold">{currentSession.user?.name}</h2>
-            <p className="text-center text-gray-700 mb-4">{currentSession.user?.email}</p>
+            <h2 className="text-xl font-bold">{initialSession.user?.name}</h2>
+            <p className="text-center text-gray-700 mb-4">{initialSession.user?.email}</p>
 
             <div className="grid grid-cols-3 gap-2 w-full mb-4">
               {[1, 2, 3, 4, 5, 6].map((item) => (

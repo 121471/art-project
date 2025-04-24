@@ -1,19 +1,12 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { redirect } from "next/navigation"
 import HomeContent from './home-content'
 
-export default async function HomePage() {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session) {
-      redirect('/login')
-    }
+// Mark the page as dynamic to handle session data
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-    return <HomeContent initialSession={session} />
-  } catch (error) {
-    console.error('Error in HomePage:', error)
-    redirect('/login')
-  }
+export default async function HomePage() {
+  const session = await getServerSession(authOptions)
+  return <HomeContent initialSession={session} />
 }

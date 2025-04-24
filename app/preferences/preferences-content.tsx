@@ -1,113 +1,87 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Session } from 'next-auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, X } from 'lucide-react'
-import { Session } from 'next-auth'
-
-interface Category {
-  id: string
-  name: string
-  slug: string
-  parentId: string | null
-  parent: {
-    id: string
-    name: string
-    slug: string
-    parentId: string | null
-    createdAt: Date
-    updatedAt: Date
-  } | null
-  createdAt: Date
-  updatedAt: Date
-}
-
-interface ArtPreference {
-  id: string
-  categoryId: string
-  userId: string
-  createdAt: Date
-  updatedAt: Date
-  category: {
-    id: string
-    name: string
-    slug: string
-    parentId: string | null
-    createdAt: Date
-    updatedAt: Date
-  }
-}
+import { Loader2 } from 'lucide-react'
 
 interface PreferencesContentProps {
-  initialSession: Session
-  initialCategories: Category[]
-  initialPreferences: ArtPreference[]
+  initialSession: Session;
 }
 
-export default function PreferencesContent({ 
-  initialSession,
-  initialCategories,
-  initialPreferences
-}: PreferencesContentProps) {
-  const [categories, setCategories] = useState<Category[]>(initialCategories)
-  const [preferences, setPreferences] = useState<ArtPreference[]>(initialPreferences)
-  const [loading, setLoading] = useState(false)
+export default function PreferencesContent({ initialSession }: PreferencesContentProps) {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [preferences, setPreferences] = useState({
+    name: initialSession?.user?.name || '',
+    email: initialSession?.user?.email || '',
+    bio: '',
+    location: '',
+    website: '',
+    instagram: '',
+    twitter: '',
+  })
 
-  const handleAddPreference = async (categoryId: string) => {
+  useEffect(() => {
+    if (!initialSession) {
+      router.push('/login')
+      return
+    }
+
+    async function fetchPreferences() {
+      try {
+        const response = await fetch('/api/users/preferences')
+        if (!response.ok) {
+          throw new Error('Failed to fetch preferences')
+        }
+        const data = await response.json()
+        setPreferences(prev => ({
+          ...prev,
+          ...data,
+          name: initialSession?.user?.name || data.name || '',
+          email: initialSession?.user?.email || data.email || '',
+        }))
+      } catch (error) {
+        console.error('Error fetching preferences:', error)
+        toast.error('Failed to load preferences')
+      }
+    }
+
+    fetchPreferences()
+  }, [initialSession, router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
     try {
-      setLoading(true)
-      const response = await fetch('/api/preferences', {
-        method: 'POST',
+      const response = await fetch('/api/users/preferences', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ categoryId }),
+        body: JSON.stringify(preferences),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to add preference')
+        throw new Error('Failed to update preferences')
       }
 
-      const newPreference = await response.json()
-      setPreferences([...preferences, newPreference])
-      toast.success('Preference added successfully')
+      toast.success('Preferences updated successfully')
     } catch (error) {
-      console.error('Error adding preference:', error)
-      toast.error('Failed to add preference')
+      console.error('Error updating preferences:', error)
+      toast.error('Failed to update preferences')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  const handleRemovePreference = async (preferenceId: string) => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/preferences', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ preferenceId }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to remove preference')
-      }
-
-      setPreferences(preferences.filter((p) => p.id !== preferenceId))
-      toast.success('Preference removed successfully')
-    } catch (error) {
-      console.error('Error removing preference:', error)
-      toast.error('Failed to remove preference')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
+  if (!initialSession) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -115,87 +89,98 @@ export default function PreferencesContent({
     )
   }
 
-  const mainCategories = categories.filter((cat) => !cat.parentId)
-  const getSubcategories = (parentId: string) =>
-    categories.filter((cat) => cat.parentId === parentId)
-
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <h1 className="text-3xl font-bold">Art Preferences</h1>
-      <p className="text-muted-foreground">
-        Select the types of art you're interested in to receive notifications about new artworks.
-      </p>
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Preferences</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {preferences.map((preference) => (
-                <Badge
-                  key={preference.id}
-                  variant="secondary"
-                  className="flex items-center gap-1"
-                >
-                  {preference.category.name}
-                  <button
-                    onClick={() => handleRemovePreference(preference.id)}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-              {preferences.length === 0 && (
-                <p className="text-muted-foreground">No preferences selected yet.</p>
-              )}
+    <div className="max-w-2xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile Preferences</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={preferences.name}
+                onChange={(e) => setPreferences({ ...preferences, name: e.target.value })}
+                disabled={isLoading}
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {mainCategories.map((category) => (
-            <Card key={category.id}>
-              <CardHeader>
-                <CardTitle>{category.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {getSubcategories(category.id).map((subcategory) => {
-                    const isSelected = preferences.some(
-                      (p) => p.categoryId === subcategory.id
-                    )
-                    return (
-                      <div
-                        key={subcategory.id}
-                        className="flex items-center justify-between"
-                      >
-                        <span>{subcategory.name}</span>
-                        <Button
-                          variant={isSelected ? "destructive" : "secondary"}
-                          onClick={() =>
-                            isSelected
-                              ? handleRemovePreference(
-                                  preferences.find(
-                                    (p) => p.categoryId === subcategory.id
-                                  )!.id
-                                )
-                              : handleAddPreference(subcategory.id)
-                          }
-                        >
-                          {isSelected ? 'Remove' : 'Add'}
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={preferences.email}
+                onChange={(e) => setPreferences({ ...preferences, email: e.target.value })}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Input
+                id="bio"
+                value={preferences.bio}
+                onChange={(e) => setPreferences({ ...preferences, bio: e.target.value })}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={preferences.location}
+                onChange={(e) => setPreferences({ ...preferences, location: e.target.value })}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <Input
+                id="website"
+                value={preferences.website}
+                onChange={(e) => setPreferences({ ...preferences, website: e.target.value })}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram">Instagram</Label>
+              <Input
+                id="instagram"
+                value={preferences.instagram}
+                onChange={(e) => setPreferences({ ...preferences, instagram: e.target.value })}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="twitter">Twitter</Label>
+              <Input
+                id="twitter"
+                value={preferences.twitter}
+                onChange={(e) => setPreferences({ ...preferences, twitter: e.target.value })}
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Preferences'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 } 

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { Session } from 'next-auth'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { ExternalLink, Instagram, Twitter, Globe, MapPin, Calendar } from "lucid
 import Image from "next/image"
 import { UserCollections } from '@/components/user-collections'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
 interface Artist {
   id: string
@@ -47,211 +48,153 @@ interface ArtistContentProps {
 }
 
 export default function ArtistContent({ initialSession, artist }: ArtistContentProps) {
+  const router = useRouter()
   const [isFollowing, setIsFollowing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!initialSession) {
+      router.push('/login')
+      return
+    }
+
+    // Check if the current user is following this artist
+    setIsFollowing(artist.followers.some(follower => follower.id === initialSession.user.id))
+  }, [initialSession, artist.followers, router])
 
   const handleFollow = async () => {
+    if (!initialSession) {
+      router.push('/login')
+      return
+    }
+
+    setIsLoading(true)
     try {
       const response = await fetch(`/api/artists/${artist.id}/follow`, {
-        method: isFollowing ? "DELETE" : "POST",
+        method: isFollowing ? 'DELETE' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
+
       if (!response.ok) {
-        throw new Error("Failed to update follow status")
+        throw new Error('Failed to update follow status')
       }
+
       setIsFollowing(!isFollowing)
-      toast.success(isFollowing ? "Unfollowed successfully" : "Followed successfully")
+      toast.success(isFollowing ? 'Unfollowed artist' : 'Followed artist')
     } catch (error) {
-      console.error("Error updating follow status:", error)
-      toast.error("Failed to update follow status")
+      console.error('Error updating follow status:', error)
+      toast.error('Failed to update follow status')
+    } finally {
+      setIsLoading(false)
     }
   }
 
+  if (!initialSession) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto p-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center mb-6">
-              <div className="relative w-32 h-32 mb-4">
-                <Avatar className="w-full h-full">
+    <div className="container mx-auto py-8">
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-1/3">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center">
+                <Avatar className="w-24 h-24 mb-4">
                   <AvatarImage src={artist.image || undefined} />
-                  <AvatarFallback>{artist.name?.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{artist.name?.charAt(0) || 'A'}</AvatarFallback>
                 </Avatar>
-                {artist.isVerified && (
-                  <Badge className="absolute -bottom-2 -right-2">Verified</Badge>
-                )}
-              </div>
-              <div className="text-center mb-4">
                 <h1 className="text-2xl font-bold mb-2">{artist.name}</h1>
-                <p className="text-gray-600">{artist.email}</p>
-              </div>
-              {initialSession?.user?.id !== artist.id && (
+                {artist.isVerified && (
+                  <Badge variant="secondary" className="mb-4">
+                    Verified Artist
+                  </Badge>
+                )}
                 <Button
                   variant={isFollowing ? "outline" : "default"}
                   onClick={handleFollow}
-                  className="mb-4"
+                  disabled={isLoading}
+                  className="w-full mb-4"
                 >
-                  {isFollowing ? "Following" : "Follow"}
-                </Button>
-              )}
-              <div className="flex gap-4 mb-4">
-                {artist.website && (
-                  <a
-                    href={artist.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <Globe className="h-5 w-5" />
-                  </a>
-                )}
-                {artist.socialLinks?.instagram && (
-                  <a
-                    href={`https://instagram.com/${artist.socialLinks.instagram}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <Instagram className="h-5 w-5" />
-                  </a>
-                )}
-                {artist.socialLinks?.twitter && (
-                  <a
-                    href={`https://twitter.com/${artist.socialLinks.twitter}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <Twitter className="h-5 w-5" />
-                  </a>
-                )}
-              </div>
-              <div className="flex gap-4 text-sm text-gray-600 mb-4">
-                {artist.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{artist.location}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>Joined {new Date(artist.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-              {artist.bio && (
-                <p className="text-center text-gray-600 max-w-2xl">{artist.bio}</p>
-              )}
-            </div>
-
-            <div className="flex justify-center gap-4 mb-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{artist.artworks.length}</div>
-                <div className="text-sm text-gray-600">Artworks</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{artist.followers.length}</div>
-                <div className="text-sm text-gray-600">Followers</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{artist.following.length}</div>
-                <div className="text-sm text-gray-600">Following</div>
-              </div>
-            </div>
-
-            <Tabs defaultValue="artworks">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="artworks">Artworks</TabsTrigger>
-                <TabsTrigger value="about">About</TabsTrigger>
-              </TabsList>
-              <TabsContent value="artworks">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                  {artist.artworks.map((artwork) => (
-                    <Link
-                      href={`/artwork/${artwork.id}`}
-                      key={artwork.id}
-                      className="block"
-                    >
-                      <div className="relative aspect-square rounded-lg overflow-hidden mb-2">
-                        <Image
-                          src={artwork.imageUrl}
-                          alt={artwork.title}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <h3 className="font-medium">{artwork.title}</h3>
-                      <div className="flex justify-between text-sm">
-                        <span>${artwork.price}</span>
-                        <span className="text-gray-500">{artwork.category}</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </TabsContent>
-              <TabsContent value="about">
-                <div className="mt-4 space-y-4">
-                  {artist.bio && (
-                    <div>
-                      <h3 className="font-semibold mb-2">Bio</h3>
-                      <p className="text-gray-600">{artist.bio}</p>
-                    </div>
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : isFollowing ? (
+                    'Unfollow'
+                  ) : (
+                    'Follow'
                   )}
+                </Button>
+                {artist.bio && <p className="text-center mb-4">{artist.bio}</p>}
+                <div className="flex flex-col gap-2 w-full">
                   {artist.location && (
-                    <div>
-                      <h3 className="font-semibold mb-2">Location</h3>
-                      <p className="text-gray-600">{artist.location}</p>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>{artist.location}</span>
                     </div>
                   )}
                   {artist.website && (
-                    <div>
-                      <h3 className="font-semibold mb-2">Website</h3>
-                      <a
-                        href={artist.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline flex items-center gap-1"
-                      >
-                        {artist.website}
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </div>
+                    <Link href={artist.website} target="_blank" className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      <span>Website</span>
+                    </Link>
                   )}
-                  {(artist.socialLinks?.instagram || artist.socialLinks?.twitter) && (
-                    <div>
-                      <h3 className="font-semibold mb-2">Social Media</h3>
-                      <div className="flex gap-4">
-                        {artist.socialLinks?.instagram && (
-                          <a
-                            href={`https://instagram.com/${artist.socialLinks.instagram}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-600 hover:text-gray-900 flex items-center gap-1"
-                          >
-                            <Instagram className="h-4 w-4" />
-                            @{artist.socialLinks.instagram}
-                          </a>
-                        )}
-                        {artist.socialLinks?.twitter && (
-                          <a
-                            href={`https://twitter.com/${artist.socialLinks.twitter}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-600 hover:text-gray-900 flex items-center gap-1"
-                          >
-                            <Twitter className="h-4 w-4" />
-                            @{artist.socialLinks.twitter}
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                  {artist.socialLinks?.instagram && (
+                    <Link href={artist.socialLinks.instagram} target="_blank" className="flex items-center gap-2">
+                      <Instagram className="h-4 w-4" />
+                      <span>Instagram</span>
+                    </Link>
+                  )}
+                  {artist.socialLinks?.twitter && (
+                    <Link href={artist.socialLinks.twitter} target="_blank" className="flex items-center gap-2">
+                      <Twitter className="h-4 w-4" />
+                      <span>Twitter</span>
+                    </Link>
                   )}
                 </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-6">Collections</h2>
-          <UserCollections userId={artist.id} isOwnProfile={initialSession?.user?.id === artist.id} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="w-full md:w-2/3">
+          <Tabs defaultValue="artworks">
+            <TabsList className="mb-4">
+              <TabsTrigger value="artworks">Artworks</TabsTrigger>
+              <TabsTrigger value="collections">Collections</TabsTrigger>
+            </TabsList>
+            <TabsContent value="artworks">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {artist.artworks.map((artwork) => (
+                  <Card key={artwork.id}>
+                    <CardContent className="p-0">
+                      <Link href={`/artwork/${artwork.id}`}>
+                        <div className="relative aspect-square">
+                          <Image
+                            src={artwork.imageUrl}
+                            alt={artwork.title}
+                            fill
+                            className="object-cover rounded-t-lg"
+                          />
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-semibold">{artwork.title}</h3>
+                          <p className="text-sm text-muted-foreground">${artwork.price}</p>
+                        </div>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+            <TabsContent value="collections">
+              <UserCollections userId={artist.id} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
