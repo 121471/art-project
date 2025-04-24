@@ -23,10 +23,7 @@ interface Artist {
   role: string
   bio: string | null
   website: string | null
-  socialLinks: {
-    instagram?: string
-    twitter?: string
-  } | null
+  socialLinks: any // Changed to any to handle JSON from Prisma
   location: string | null
   isVerified: boolean
   createdAt: Date
