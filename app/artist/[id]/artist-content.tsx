@@ -18,7 +18,7 @@ import { Loader2 } from 'lucide-react'
 interface Artist {
   id: string
   name: string | null
-  email: string
+  email: string | null
   image: string | null
   role: string
   bio: string | null
@@ -29,14 +29,17 @@ interface Artist {
   } | null
   location: string | null
   isVerified: boolean
-  createdAt: string
+  createdAt: Date
+  updatedAt: Date
   artworks: {
     id: string
     title: string
     price: number
     imageUrl: string
-    category: string
-    createdAt: string
+    category: {
+      name: string
+    }
+    createdAt: Date
   }[]
   followers: { id: string }[]
   following: { id: string }[]

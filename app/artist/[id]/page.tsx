@@ -14,7 +14,7 @@ export default async function ArtistPage({ params }: { params: { id: string } })
     redirect('/login')
   }
 
-  const artist = await prisma.artist.findUnique({
+  const artist = await prisma.user.findUnique({
     where: { id: params.id },
     include: {
       artworks: {
